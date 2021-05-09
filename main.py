@@ -1,36 +1,62 @@
 #!/usr/bin/env python3
 
 import logging, subprocess, os
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 
 token = os.getenv('TTYGRAM_TOKEN')
-chat_id = os.getenv('TTYGRAM_CHAT_ID')
+chatid_value = os.getenv('TTYGRAM_CHAT_ID')
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                      level=logging.INFO)
 
-def helper(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="""Welcome 👋 . These are available comands:
-/command <command> - Execute a command.
-/chatid - Get your chat_id.
-/sysinfo - Get general system info.
+CHOOSE, DONE = range(2)
 
-NOTE: To log in, add this convesation id to TTYGRAM_CHAT_ID env
-""")
+reply_keyboard = [
+    ['command'],
+    ['chat_id', 'sysinfo'],
+    ['done'],
+]
 
-def chatid(update, context):
-    context.bot.send_message(chat_id = update.effective_chat.id, text = update.effective_chat.id)
+markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+
+def start(update, context):
+    update.message.reply_text(
+        "Welcome 👋 . Choose an action:",
+        reply_markup=markup
+    )
+    return CHOOSE
+
+def done(update, context):
+    update.message.reply_text(
+        "See you then!",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return ConversationHandler.END
+
+def chat_id(update, context):
+    update.message.reply_text(
+        update.effective_chat.id,
+        reply_markup=markup
+    )
+    return CHOOSE
 
 def sysinfo(update, context):
-    if (chat_id and update.effective_chat.id == int(chat_id)) :
-        # Get sys date
+    if (chatid_value and update.effective_chat.id == int(chatid_value)) :
+        # Sys date
         stdout = subprocess.check_output("/bin/date").decode('ascii')
-        # Get sys info
+        # Sys info
         stdout += subprocess.check_output("/usr/bin/landscape-sysinfo").decode('ascii')
-        context.bot.send_message(chat_id = update.effective_chat.id, text = stdout)
+        update.message.reply_text(
+            stdout,
+            reply_markup=markup
+        )
     else :
-        context.bot.send_message(chat_id = update.effective_chat.id, text = "Sorry, not logged yet :(")
+        update.message.reply_text(
+            "Not logged in yet. Get your chat_id, add export it as TTYGRAM_CHAT_ID and restart me 🙂",
+            reply_markup=markup
+        )
+    return CHOOSE
 
 def exec_command(command):
     try :
@@ -41,35 +67,48 @@ def exec_command(command):
 
 def command(update, context):
     if (chat_id and update.effective_chat.id == int(chat_id)) :
-        context.bot.send_message(chat_id = update.effective_chat.id, text = exec_command(context.args))
+        #context.bot.send_message(chat_id = update.effective_chat.id, text = exec_command(update.message.text))
+        context.bot.send_message(chat_id = update.effective_chat.id, text = "Enter command:")
     else :
         context.bot.send_message(chat_id = update.effective_chat.id, text = "Sorry, not logged yet :(")
 
-def read_message(update, context):
-    context.bot.send_message(chat_id = update.effective_chat.id, text = "Try executing /help .")
+def wrong_option(update, context):
+    update.message.reply_text(
+        "Select a valid option. If you are done, press done. 🙂",
+        reply_markup=markup
+    )
+    return CHOOSE
+
+def default(update, context):
+    context.bot.send_message(chat_id = update.effective_chat.id, text = "Invoke /start to start.")
 
 def main():
-    #Authenticate bot
+
     updater = Updater(token, use_context = True)
-    
-    #Get dispatcher to update handles
     dp = updater.dispatcher
 
-    #Handle commands
-    dp.add_handler(CommandHandler('help', helper))
-    dp.add_handler(CommandHandler('chatid', chatid))
-    dp.add_handler(CommandHandler('sysinfo', sysinfo))
-    dp.add_handler(CommandHandler('command', command))
-    dp.add_handler(MessageHandler(Filters.text & (~Filters.command), read_message))
-
-    #Start the bot
+    #Handlers
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            CHOOSE: [
+                MessageHandler(Filters.regex('^chat_id$'), chat_id),
+                MessageHandler(Filters.regex('^sysinfo$'), sysinfo),
+                MessageHandler(Filters.regex('^command$'), command),
+            ],
+            DONE: [ MessageHandler(Filters.regex('^done$'), done)]
+        },
+        fallbacks=[
+            MessageHandler(Filters.regex('^done$'), done),
+            MessageHandler(Filters.text & Filters.command, wrong_option)
+        ],
+    )
+    dp.add_handler(conv_handler)
+    dp.add_handler(MessageHandler(Filters.text & (~Filters.command), default))
     print('Starting bot..')
     updater.start_polling()
     print('Success!')
 
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
     updater.idle()
 
 if __name__ == '__main__':
