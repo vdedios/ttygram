@@ -27,14 +27,14 @@ markup_command = ReplyKeyboardMarkup(command_keyboard, one_time_keyboard=True)
 
 def start(update, context):
     update.message.reply_text(
-        "Welcome 👋 . Choose an action:",
+        "Welcome 👋  Choose an action:",
         reply_markup=markup
     )
     return CHOOSE
 
 def done(update, context):
     update.message.reply_text(
-        "See you then!",
+        "See you then 👋",
         reply_markup = ReplyKeyboardRemove(),
     )
     return ConversationHandler.END
