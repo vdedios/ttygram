@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import logging, subprocess, os
-
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 token = os.getenv('TTYGRAM_TOKEN')
@@ -10,15 +10,27 @@ chat_id = os.getenv('TTYGRAM_CHAT_ID')
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                      level=logging.INFO)
 
-def start(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="🧀")
+def helper(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="""Welcome 👋 . These are available comands:
+/command <command> - Execute a command.
+/chatid - Get your chat_id.
+/sysinfo - Get general system info.
 
-def sys_info():
-    # Get sys date
-    ret = subprocess.check_output("/bin/date").decode('ascii')
-    # Get sys info
-    ret += subprocess.check_output("/usr/bin/landscape-sysinfo").decode('ascii')
-    return ret
+NOTE: To log in, add this convesation id to TTYGRAM_CHAT_ID env
+""")
+
+def chatid(update, context):
+    context.bot.send_message(chat_id = update.effective_chat.id, text = update.effective_chat.id)
+
+def sysinfo(update, context):
+    if (chat_id and update.effective_chat.id == int(chat_id)) :
+        # Get sys date
+        stdout = subprocess.check_output("/bin/date").decode('ascii')
+        # Get sys info
+        stdout += subprocess.check_output("/usr/bin/landscape-sysinfo").decode('ascii')
+        context.bot.send_message(chat_id = update.effective_chat.id, text = stdout)
+    else :
+        context.bot.send_message(chat_id = update.effective_chat.id, text = "Sorry, not logged yet :(")
 
 def exec_command(command):
     try :
@@ -27,16 +39,14 @@ def exec_command(command):
         ret = err.output.decode('utf-8')
     return ret
 
-def command_handler(update, context):
-    if (update.message.text == "chatid") :
-            context.bot.send_message(chat_id = update.effective_chat.id, text = update.effective_chat.id)
-    elif (chat_id and update.effective_chat.id == int(chat_id)) :
-        if (update.message.text == "sysinfo") :
-            context.bot.send_message(chat_id = update.effective_chat.id, text = sys_info())
-        else :
-            context.bot.send_message(chat_id = update.effective_chat.id, text = exec_command(update.message.text))
+def command(update, context):
+    if (chat_id and update.effective_chat.id == int(chat_id)) :
+        context.bot.send_message(chat_id = update.effective_chat.id, text = exec_command(context.args))
     else :
-        context.bot.send_message(chat_id = update.effective_chat.id, text = "I don't know you :(")
+        context.bot.send_message(chat_id = update.effective_chat.id, text = "Sorry, not logged yet :(")
+
+def read_message(update, context):
+    context.bot.send_message(chat_id = update.effective_chat.id, text = "Try executing /help .")
 
 def main():
     #Authenticate bot
@@ -46,8 +56,11 @@ def main():
     dp = updater.dispatcher
 
     #Handle commands
-    dp.add_handler(CommandHandler('start', start))
-    dp.add_handler(MessageHandler(Filters.text & (~Filters.command), command_handler))
+    dp.add_handler(CommandHandler('help', helper))
+    dp.add_handler(CommandHandler('chatid', chatid))
+    dp.add_handler(CommandHandler('sysinfo', sysinfo))
+    dp.add_handler(CommandHandler('command', command))
+    dp.add_handler(MessageHandler(Filters.text & (~Filters.command), read_message))
 
     #Start the bot
     print('Starting bot..')
