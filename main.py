@@ -10,7 +10,7 @@ chatid_value = os.getenv('TTYGRAM_CHAT_ID')
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                      level=logging.INFO)
 
-CHOOSE, DONE = range(2)
+CHOOSE, COMMAND, DONE = range(3)
 
 reply_keyboard = [
     ['command'],
@@ -18,7 +18,12 @@ reply_keyboard = [
     ['done'],
 ]
 
+command_keyboard = [
+    ['done'],
+]
+
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+markup_command = ReplyKeyboardMarkup(command_keyboard, one_time_keyboard=True)
 
 def start(update, context):
     update.message.reply_text(
@@ -30,14 +35,14 @@ def start(update, context):
 def done(update, context):
     update.message.reply_text(
         "See you then!",
-        reply_markup=ReplyKeyboardRemove(),
+        reply_markup = ReplyKeyboardRemove(),
     )
     return ConversationHandler.END
 
 def chat_id(update, context):
     update.message.reply_text(
         update.effective_chat.id,
-        reply_markup=markup
+        reply_markup = markup
     )
     return CHOOSE
 
@@ -49,12 +54,12 @@ def sysinfo(update, context):
         stdout += subprocess.check_output("/usr/bin/landscape-sysinfo").decode('ascii')
         update.message.reply_text(
             stdout,
-            reply_markup=markup
+            reply_markup = markup
         )
     else :
         update.message.reply_text(
             "Not logged in yet. Get your chat_id, add export it as TTYGRAM_CHAT_ID and restart me 🙂",
-            reply_markup=markup
+            reply_markup = markup
         )
     return CHOOSE
 
@@ -66,16 +71,37 @@ def exec_command(command):
     return ret
 
 def command(update, context):
-    if (chat_id and update.effective_chat.id == int(chat_id)) :
-        #context.bot.send_message(chat_id = update.effective_chat.id, text = exec_command(update.message.text))
-        context.bot.send_message(chat_id = update.effective_chat.id, text = "Enter command:")
+    update.message.reply_text(
+        exec_command(update.message.text),
+        reply_markup = markup_command
+    )
+    return COMMAND
+
+def init_shell(update, context):
+    if (chatid_value and update.effective_chat.id == int(chatid_value)) :
+        update.message.reply_text(
+            "Start typing commands until you are done.",
+            reply_markup = markup_command
+        )
+        return COMMAND
     else :
-        context.bot.send_message(chat_id = update.effective_chat.id, text = "Sorry, not logged yet :(")
+        update.message.reply_text(
+            "Not logged in yet. Get your chat_id, add export it as TTYGRAM_CHAT_ID and restart me 🙂",
+            reply_markup = markup
+        )
+        return CHOOSE
+
+def finish_shell(update, context):
+    update.message.reply_text(
+        "Select an option",
+        reply_markup = markup
+    )
+    return CHOOSE
 
 def wrong_option(update, context):
     update.message.reply_text(
         "Select a valid option. If you are done, press done. 🙂",
-        reply_markup=markup
+        reply_markup = markup
     )
     return CHOOSE
 
@@ -94,7 +120,11 @@ def main():
             CHOOSE: [
                 MessageHandler(Filters.regex('^chat_id$'), chat_id),
                 MessageHandler(Filters.regex('^sysinfo$'), sysinfo),
-                MessageHandler(Filters.regex('^command$'), command),
+                MessageHandler(Filters.regex('^command$'), init_shell),
+            ],
+            COMMAND: [
+                MessageHandler(Filters.regex('^done$'), finish_shell),
+                MessageHandler(Filters.text & (~Filters.command), command)
             ],
             DONE: [ MessageHandler(Filters.regex('^done$'), done)]
         },
