@@ -8,18 +8,18 @@ A simple but yet effective terminal Telegram bot.
 
 I just wanted to monitor my server temperature and basic statistics from Telegram but I ended up overengineering the initial idea. I though it would be useful and cool being able to execute commands and scripts remotely as well. 
 
-Although being far from completely functional I find it quite useful!
+Although being far from a completely functional shell I find it quite useful!
 ## Specs and how it works
 
 #### Execute commands
-Theoretically any command can be executed, but with some restrictions. Commands are executed in a sandboxed process using `subprocess` python module. Commands are thrown to standard `sh` shell and once they have been executed, the process exits. Some workarounds made:
+Theoretically any command can be executed, but with some restrictions. Commands are executed in a sandboxed process using `subprocess` python module. Commands are thrown to standard `sh` shell and once they have been executed, the process exits. Some made workarounds:
 
-Some commands may output a large text to `stdout`, In this case, since Telegram has a length restriction, a warning message is displayed. Also, some commands may never exit, for example `ping google.com`. Launched subprocess has been configured with a timeout of `2 seconds` to avoid locks since command output can only be readen once it has exited.
+Some commands may output a large text to `stdout`, in this case, since Telegram API has a max length message restriction, a warning message is displayed. Also, some commands like `ping google.com` may never exit. Launched subprocess has been configured with a timeout of `2 seconds` to avoid locks in situations like this since command output can only be readen once it has exited.
 
 Some additional tweaks may need to be done in order to match your requirements.
 
 #### Change dir
-As I have mentioned, since commands are launched in a temporary shell which exits after execution, some commands like `cd` won't work. For this reason this feature has been implemented as an option: `chdir`. It uses `os.chdir(path)` which will change parents `current work directory`.
+As I have mentioned, since commands are launched in a temporary shell which exits after execution, some commands like `cd` won't work. For this reason this feature has been implemented as an option: `chdir`. It uses `os.chdir(path)` which will change parent's `current work directory`.
 
 #### Monitor your system status
 ⚠️ This has only been tested in Ubuntu Server and this option is only available for Linux systems.
