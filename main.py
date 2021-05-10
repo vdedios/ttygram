@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import logging, subprocess, os
+import logging, subprocess, os, sys
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 
@@ -38,10 +38,13 @@ def chat_id(update, context):
 
 def sysinfo(update, context):
     if (chatid_value and update.effective_chat.id == int(chatid_value)) :
-        # Sys date
-        stdout = subprocess.check_output("/bin/date").decode('ascii')
-        # Sys info
-        stdout += subprocess.check_output("/usr/bin/landscape-sysinfo").decode('ascii')
+        if (sys.platform == 'linux'):
+            # Sys date
+            stdout = subprocess.check_output("/bin/date").decode('ascii')
+            # Sys info
+            stdout += subprocess.check_output("/usr/bin/landscape-sysinfo").decode('ascii')
+        else :
+            stdout = 'Options available for Linux systems only.'
         update.message.reply_text(
             stdout,
             reply_markup = markup
