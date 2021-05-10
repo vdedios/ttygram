@@ -27,7 +27,6 @@ As I have mentioned, since commands are launched in a temporary shell which exit
 #### Chat Id
 Get your chat id for authentication purposes. Read bellow.
 
-## Dependencies
 ## Usage
 
 #### 1. Register
@@ -49,6 +48,13 @@ So open your bot, select chat_id option in bot, get your conversation id and exp
 ```bash
     export TTYGRAM_CHAT_ID='your_chat_id'
 ```
+
+## Dependencies
+
+This project has been built using [python_telegram_bot](https://github.com/python-telegram-bot/python-telegram-bot.git). Follow their installation instructinos.
+
+Also, you may have to install `Python3`
+
 ## Support
 
 If you find any issue I suggest that you open a PR with the fix 🙂
