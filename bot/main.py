@@ -161,7 +161,7 @@ def main():
                 MessageHandler(Filters.text & (~Filters.command), command)
             ],
             CHDIR: [
-                MessageHandler(Filters.text & Filters.command, chdir)
+                MessageHandler(Filters.text, chdir)
             ],
             DONE: [ MessageHandler(Filters.regex('^done$'), done)]
         },
